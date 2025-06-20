@@ -4,18 +4,11 @@
 #include <Adafruit_SSD1306.h>
 
 // --- Konfiguration ---
-
-// Pin für den Taster
 const int TASTER_PIN = 23;
-
-// OLED Display Konfiguration
-const int SCREEN_WIDTH = 128; // Pixelbreite des Displays
-const int SCREEN_HEIGHT = 64;  // Pixelhöhe des Displays
-const int OLED_RESET = -1;     // Reset Pin (-1, da wir den ESP32 Reset verwenden)
-// I2C-Adresse des OLEDs. Meist 0x3C für 128x64 oder 1.3" Displays
+const int SCREEN_WIDTH = 128;
+const int SCREEN_HEIGHT = 64;
+const int OLED_RESET = -1;
 const int I2C_ADRESSE = 0x3C;
-
-// Zeit-Schwellenwerte in Millisekunden
 const unsigned long KURZ_DRUCK_MAX_MS = 200;
 const unsigned long LANG_DRUCK_MIN_MS = 201;
 const unsigned long TIMEOUT_MS = 1500;
@@ -41,9 +34,7 @@ MorseZeichen morseAlphabet[] = {
 };
 
 // --- Globale Variablen ---
-// Erstelle ein Display-Objekt
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
-
 int tasterStatus = HIGH;
 int letzterTasterStatus = HIGH;
 unsigned long drueckStartZeit = 0;
@@ -53,16 +44,18 @@ String angezeigterText = "";
 bool clearAktiviert = false;
 
 void setup() {
-  Serial.begin(1152200);
+  Serial.begin(115200); // Startet die serielle Kommunikation
+  // SERIELLE AUSGABE: Startnachricht
+  Serial.println("\n\n--- Morse-Decoder gestartet ---");
+  Serial.println("Warte auf Eingabe...");
+  
   pinMode(TASTER_PIN, INPUT_PULLUP);
 
-  // Initialisiere das OLED-Display
   if (!display.begin(SSD1306_SWITCHCAPVCC, I2C_ADRESSE)) {
-    Serial.println(F("SSD1306 allocation failed"));
-    for (;;); // Endlosschleife bei Fehler
+    Serial.println(F("Fehler: SSD1306 Display konnte nicht initialisiert werden."));
+    for (;;);
   }
 
-  // Startbildschirm anzeigen
   display.clearDisplay();
   display.setTextSize(2);
   display.setTextColor(SSD1306_WHITE);
@@ -70,10 +63,10 @@ void setup() {
   display.println("Morse");
   display.setCursor(20, 35);
   display.println("Decoder");
-  display.display(); // Wichtig: Änderungen anzeigen!
+  display.display();
   delay(2000);
 
-  updateDisplay(); // Erste Anzeige des leeren Layouts
+  updateDisplay();
 }
 
 void loop() {
@@ -87,6 +80,8 @@ void loop() {
 
   // 2. Logik für den Reset durch langes Drücken
   if (tasterStatus == LOW && (millis() - drueckStartZeit > CLEAR_DRUCK_DAUER_MS) && !clearAktiviert) {
+    // SERIELLE AUSGABE: Bestätigung für das Löschen
+    Serial.println("\n>> Langes Drücken erkannt. ALLES GELÖSCHT. <<\n");
     angezeigterText = "";
     aktuelleMorseSequenz = "";
     updateDisplay();
@@ -100,13 +95,23 @@ void loop() {
     } else {
       unsigned long drueckDauer = millis() - drueckStartZeit;
       if (aktuelleMorseSequenz.length() < MAX_SEQUENZ_LAENGE) {
+        String signal = ""; // Temporärer String für die Ausgabe
         if (drueckDauer <= KURZ_DRUCK_MAX_MS) {
           aktuelleMorseSequenz += ".";
+          signal = ". (kurz)";
         } else {
           aktuelleMorseSequenz += "-";
+          signal = "- (lang)";
         }
+        // SERIELLE AUSGABE: Welches Signal erkannt wurde und wie die Sequenz jetzt aussieht
+        Serial.print("Signal erkannt: " + signal);
+        Serial.println(" | Aktuelle Sequenz: " + aktuelleMorseSequenz);
+        
         updateDisplay();
         letzteAktionZeit = millis();
+      } else {
+        // SERIELLE AUSGABE: Info, dass die maximale Länge erreicht ist
+        Serial.println("Maximale Sequenzlänge (5) erreicht. Eingabe ignoriert.");
       }
     }
     letzterTasterStatus = HIGH;
@@ -114,8 +119,18 @@ void loop() {
 
   // 4. Logik zum Auswerten nach Timeout
   if (aktuelleMorseSequenz.length() > 0 && (millis() - letzteAktionZeit > TIMEOUT_MS)) {
+    // SERIELLE AUSGABE: Start der Dekodierung
+    Serial.println("\n--- Timeout ---");
+    Serial.println("Dekodiere Sequenz: " + aktuelleMorseSequenz);
+    
     char buchstabe = dekodiereMorse(aktuelleMorseSequenz);
     angezeigterText += buchstabe;
+    
+    // SERIELLE AUSGABE: Ergebnis der Dekodierung und der gesamte Text
+    Serial.println("Ergebnis: '" + String(buchstabe) + "'");
+    Serial.println("Gesamttext: " + angezeigterText);
+    Serial.println("-----------------");
+
     aktuelleMorseSequenz = "";
     updateDisplay();
   }
@@ -131,27 +146,19 @@ char dekodiereMorse(String sequenz) {
   return '?';
 }
 
-// NEUE Funktion, um das OLED-Display komplett neu zu zeichnen
+// Zeichnet das OLED-Display komplett neu
 void updateDisplay() {
-  display.clearDisplay(); // Gesamten Bildschirm leeren
-
-  // 1. Dekodierten Text anzeigen (obere Hälfte)
-  display.setTextSize(2); // Größere Schrift für das Ergebnis
+  display.clearDisplay();
+  display.setTextSize(2);
   display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0, 5); // Startposition (x, y)
-  display.setTextWrap(true); // Automatischer Zeilenumbruch
+  display.setCursor(0, 5);
+  display.setTextWrap(true);
   display.print(angezeigterText);
-
-  // 2. Trennlinie zeichnen
   display.drawLine(0, 38, SCREEN_WIDTH, 38, SSD1306_WHITE);
-
-  // 3. Aktuelle Morse-Eingabe anzeigen (untere Hälfte)
-  display.setTextSize(2); // Ebenfalls große Schrift
+  display.setTextSize(2);
   display.setCursor(0, 45);
-  display.setTextWrap(false); // Kein Umbruch hier
+  display.setTextWrap(false);
   display.print(">");
   display.print(aktuelleMorseSequenz);
-
-  // 4. ALLES auf dem Bildschirm anzeigen
   display.display();
 }
