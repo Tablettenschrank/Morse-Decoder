@@ -1,4 +1,4 @@
-# Morse-Decoder #
+# Morse-Decoder - **School Project** #
 
 We made a Morse Decoder with a tool that helped us to create 
 the Code and the first Prototype in [WOKWi](https://wokwi.com/esp32).
