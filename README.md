@@ -5,7 +5,7 @@ the Code and the first Prototype in [WOKWi](https://wokwi.com/esp32).
 It works like this:
 1. You press the button for a short time like less then 200ms, it will decode it as a dot (.)
 2. You press the button for a long time like more then 201ms, it will decode it as a dash (-)
-3. If you press the button, it will clear the display and reset the morse code
+3. If you press the button for like 3 seconds, it will clear the display and reset the morse code
 
 ### What is WOKWi? ###
 ---

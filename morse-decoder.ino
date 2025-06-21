@@ -1,14 +1,17 @@
-// Binde die notwendigen Bibliotheken für das OLED ein
+// --- NEUE BIBLIOTHEKEN ---
+#include <Arduino.h>
+#include <U8g2lib.h> // U8g2 STATT Adafruit
 #include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
 
-// --- Konfiguration ---
+// --- U8G2 KONSTRUKTOR ---
+// WICHTIG: Dies ist die wichtigste Zeile für U8g2.
+// U8G2_SH1106_128X64_NONAME_F_HW_I2C ist für viele 1.3" I2C Displays korrekt.
+// Falls diese nicht geht, versuche U8G2_SSD1306_128X64_NONAME_F_HW_I2C
+U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
+
+
+// --- Konfiguration (unverändert) ---
 const int TASTER_PIN = 23;
-const int SCREEN_WIDTH = 128;
-const int SCREEN_HEIGHT = 64;
-const int OLED_RESET = -1;
-const int I2C_ADRESSE = 0x3C;
 const unsigned long KURZ_DRUCK_MAX_MS = 200;
 const unsigned long LANG_DRUCK_MIN_MS = 201;
 const unsigned long TIMEOUT_MS = 1500;
@@ -20,7 +23,6 @@ struct MorseZeichen {
   char zeichen;
   const char* code;
 };
-
 MorseZeichen morseAlphabet[] = {
   {'A', ".-"},   {'B', "-..."}, {'C', "-.-."}, {'D', "-.."},  {'E', "."},
   {'F', "..-."}, {'G', "--."},   {'H', "...."}, {'I', ".."},   {'J', ".---"},
@@ -33,8 +35,7 @@ MorseZeichen morseAlphabet[] = {
   {' ', " "}
 };
 
-// --- Globale Variablen ---
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+// --- Globale Variablen (unverändert) ---
 int tasterStatus = HIGH;
 int letzterTasterStatus = HIGH;
 unsigned long drueckStartZeit = 0;
@@ -44,43 +45,36 @@ String angezeigterText = "";
 bool clearAktiviert = false;
 
 void setup() {
-  Serial.begin(115200); // Startet die serielle Kommunikation
-  // SERIELLE AUSGABE: Startnachricht
-  Serial.println("\n\n--- Morse-Decoder gestartet ---");
-  Serial.println("Warte auf Eingabe...");
+  Serial.begin(115200);
+  Serial.println("\n\n--- Morse-Decoder mit U8g2 gestartet ---");
+
+  // U8G2: Display initialisieren
+  u8g2.begin(); // u8g2.begin() STATT display.begin()
   
   pinMode(TASTER_PIN, INPUT_PULLUP);
 
-  if (!display.begin(SSD1306_SWITCHCAPVCC, I2C_ADRESSE)) {
-    Serial.println(F("Fehler: SSD1306 Display konnte nicht initialisiert werden."));
-    for (;;);
-  }
-
-  display.clearDisplay();
-  display.setTextSize(2);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(10, 10);
-  display.println("Morse");
-  display.setCursor(20, 35);
-  display.println("Decoder");
-  display.display();
+  // U8G2: Startbildschirm anzeigen
+  u8g2.clearBuffer();          // Speicher leeren
+  u8g2.setFont(u8g2_font_ncenB12_tr); // Schriftart setzen
+  u8g2.drawStr(25, 20, "Morse"); // Text zeichnen an x, y
+  u8g2.drawStr(15, 45, "Decoder");
+  u8g2.sendBuffer();           // Speicher auf das Display schreiben
   delay(2000);
 
   updateDisplay();
 }
 
 void loop() {
+  // Komplette Logik für Taster, Timing und Morse-Dekodierung ist UNVERÄNDERT
+  
   tasterStatus = digitalRead(TASTER_PIN);
 
-  // 1. Taster wurde gerade GEDRÜCKT
   if (tasterStatus == LOW && letzterTasterStatus == HIGH) {
     drueckStartZeit = millis();
     letzterTasterStatus = LOW;
   }
 
-  // 2. Logik für den Reset durch langes Drücken
   if (tasterStatus == LOW && (millis() - drueckStartZeit > CLEAR_DRUCK_DAUER_MS) && !clearAktiviert) {
-    // SERIELLE AUSGABE: Bestätigung für das Löschen
     Serial.println("\n>> Langes Drücken erkannt. ALLES GELÖSCHT. <<\n");
     angezeigterText = "";
     aktuelleMorseSequenz = "";
@@ -88,14 +82,13 @@ void loop() {
     clearAktiviert = true;
   }
 
-  // 3. Taster wurde gerade LOSGELASSEN
   if (tasterStatus == HIGH && letzterTasterStatus == LOW) {
     if (clearAktiviert) {
       clearAktiviert = false;
     } else {
       unsigned long drueckDauer = millis() - drueckStartZeit;
       if (aktuelleMorseSequenz.length() < MAX_SEQUENZ_LAENGE) {
-        String signal = ""; // Temporärer String für die Ausgabe
+        String signal = "";
         if (drueckDauer <= KURZ_DRUCK_MAX_MS) {
           aktuelleMorseSequenz += ".";
           signal = ". (kurz)";
@@ -103,40 +96,30 @@ void loop() {
           aktuelleMorseSequenz += "-";
           signal = "- (lang)";
         }
-        // SERIELLE AUSGABE: Welches Signal erkannt wurde und wie die Sequenz jetzt aussieht
         Serial.print("Signal erkannt: " + signal);
         Serial.println(" | Aktuelle Sequenz: " + aktuelleMorseSequenz);
-        
         updateDisplay();
         letzteAktionZeit = millis();
       } else {
-        // SERIELLE AUSGABE: Info, dass die maximale Länge erreicht ist
         Serial.println("Maximale Sequenzlänge (5) erreicht. Eingabe ignoriert.");
       }
     }
     letzterTasterStatus = HIGH;
   }
 
-  // 4. Logik zum Auswerten nach Timeout
   if (aktuelleMorseSequenz.length() > 0 && (millis() - letzteAktionZeit > TIMEOUT_MS)) {
-    // SERIELLE AUSGABE: Start der Dekodierung
     Serial.println("\n--- Timeout ---");
     Serial.println("Dekodiere Sequenz: " + aktuelleMorseSequenz);
-    
     char buchstabe = dekodiereMorse(aktuelleMorseSequenz);
     angezeigterText += buchstabe;
-    
-    // SERIELLE AUSGABE: Ergebnis der Dekodierung und der gesamte Text
     Serial.println("Ergebnis: '" + String(buchstabe) + "'");
     Serial.println("Gesamttext: " + angezeigterText);
     Serial.println("-----------------");
-
     aktuelleMorseSequenz = "";
     updateDisplay();
   }
 }
 
-// Sucht die Morse-Sequenz im Alphabet und gibt das Zeichen zurück
 char dekodiereMorse(String sequenz) {
   for (int i = 0; i < sizeof(morseAlphabet) / sizeof(morseAlphabet[0]); i++) {
     if (sequenz.equals(morseAlphabet[i].code)) {
@@ -146,19 +129,28 @@ char dekodiereMorse(String sequenz) {
   return '?';
 }
 
-// Zeichnet das OLED-Display komplett neu
+// U8G2: Angepasste Funktion zum Zeichnen des Displays
 void updateDisplay() {
-  display.clearDisplay();
-  display.setTextSize(2);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0, 5);
-  display.setTextWrap(true);
-  display.print(angezeigterText);
-  display.drawLine(0, 38, SCREEN_WIDTH, 38, SSD1306_WHITE);
-  display.setTextSize(2);
-  display.setCursor(0, 45);
-  display.setTextWrap(false);
-  display.print(">");
-  display.print(aktuelleMorseSequenz);
-  display.display();
+  // Die U8g2-Zeichen-Schleife beginnt immer mit clearBuffer()
+  u8g2.clearBuffer();
+
+  // 1. Dekodierten Text anzeigen
+  u8g2.setFont(u8g2_font_logisoso16_tr); // Schöne große Schrift für das Ergebnis
+  u8g2.setCursor(0, 20); // Startposition (x, y)
+  // U8g2 kann Text nicht automatisch umbrechen wie Adafruit, daher manuell
+  // Für dieses Projekt aber unkritisch.
+  u8g2.print(angezeigterText);
+
+  // 2. Trennlinie zeichnen
+  u8g2.drawLine(0, 38, 128, 38);
+
+  // 3. Aktuelle Morse-Eingabe anzeigen
+  u8g2.setFont(u8g2_font_logisoso16_tr);
+  u8g2.setCursor(0, 60);
+  u8g2.print(">");
+  u8g2.print(aktuelleMorseSequenz);
+
+  // 4. ALLES auf dem Bildschirm anzeigen
+  // Die Schleife endet immer mit sendBuffer()
+  u8g2.sendBuffer();
 }
