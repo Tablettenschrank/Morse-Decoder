@@ -26,6 +26,9 @@ It works like this:
 7. Created the README.md file as a documentation for the project
 8. Created the GitHub repository and uploaded the code
 
+## Prototype from Wokwi ##
+![Prototype from Wokwi](picture_prototype.png)
+
 ## Featues ##
 - Decode Morse Code from a Button
 - Show the decoded Morse Code on a SSD1306 OLED Display
