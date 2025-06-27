@@ -3,19 +3,19 @@
 We made a Morse Decoder with a tool that helped us to create 
 the Code and the first Prototype in [WOKWi](https://wokwi.com/esp32).
 It works like this:
-1. You press the button for a short time like less then 200ms, it will decode it as a dot (.)
-2. You press the button for a long time like more then 201ms, it will decode it as a dash (-)
+1. You press the button for a short time like less than 200ms, it will decode it as a dot (.)
+2. You press the button for a long time like more than 201ms, it will decode it as a dash (-)
 3. If you press the button for like 3 seconds, it will clear the display and reset the morse code
 
 ### What is WOKWi? ###
 ---
-- WOKWi is a Website where you can Emulate ESP32 sytuff, cable management and use code and libarys that you also need in a real projekt.
-- It use real libary and the latest ones too.
-- WOKWi is also free and as far as i now, about components, there is no limit, but there are different plans where you can pay for it and in example get some more resouce to compile the code.
+- WOKWi is a Website where you can Emulate ESP32 stuff, cable management and use code and libraries that you also need in a real project.
+- It use real libraries and the latest ones too.
+- WOKWi is also free and as far as i now, about components, there is no limit, but there are different plans where you can pay for it and in example get some more resources to compile the code.
 
 # Steps #
 1. Created a concept of the idea of the Morse-Decoder
-2. Created the first prototype in WOKWi with 1 Display (SSD1306 OLED Dispaly with I2C) and a Button.
+2. Created the first prototype in WOKWi with 1 Display (SSD1306 OLED Display with I2C) and a Button.
 3. Created the code for the prototype
    1. We got some help from some AI tools to create the code and changed it a bit to fit my needs
    2. We used the latest libaries from WOKWi, so i didn't have to download them
