@@ -11,7 +11,7 @@ It works like this:
 ---
 - WOKWi is a Website where you can Emulate ESP32 stuff, cable management and use code and libraries that you also need in a real project.
 - It use real libraries and the latest ones too.
-- WOKWi is also free and as far as i now, about components, there is no limit, but there are different plans where you can pay for it and in example get some more resources to compile the code.
+- WOKWi is also free and as far as i know, about components, there is no limit, but there are different plans where you can pay for it and in example get some more resources to compile the code.
 
 # Steps #
 1. Created a concept of the idea of the Morse-Decoder
